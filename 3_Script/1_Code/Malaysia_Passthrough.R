@@ -43,7 +43,7 @@ Passthrough_Data %<>%
          Package_Number, RTS_Date, Shipped_Date,
          Cancelled_Date, Delivered_Date, shipment_provider_name,
          Seller_Code, tax_class,
-         Item_Cost, Item_SellerCharged) %>%
+         Item_Cost, Item_SellerCharged)
 
 write.csv(Passthrough_Data, file.path(outputFolder,"MY_Passthrough_data.csv"),
           row.names = FALSE)
@@ -54,3 +54,13 @@ Test <- Cost_OMS_SellerCharge %>% group_by(Tracking_Number) %>%
   group_by(Tracking_Number,Cost) %>%
   summarize(Counts=n(),
             Cost_calculate=sum(Item_Cost, na.rm=TRUE))
+
+Passthrough_Data %>%
+  filter(business_unit=="MP") %>%
+  group_by(Shipped_Month=month(Shipped_Date)) %>%
+  summarize(Cost=sum(Item_Cost),
+            Charged=sum(Item_SellerCharged))
+
+SellerCharges %>%
+  group_by(Txn_Date=format(created_at,"%Y-%m")) %>%
+  summarize(Charged=sum(abs(value)))
