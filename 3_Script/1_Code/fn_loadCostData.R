@@ -11,29 +11,41 @@ loadCostData <- function(costFilePath){
   setAs("character","myInteger", function(from) as.integer(gsub('"','',from)))
   setClass("myNumeric")
   setAs("character","myNumeric", function(from) as.numeric(gsub('[",]','',from)))
+  setClass("myTrackingNumber")
+  setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
   
   costData <- data.frame(Delivery_Company=character(),
                          Tracking_Number=character(),
                          Package_Number=character(),
                          Pickup_Date=as.POSIXct(character()),
-                         Cost=numeric())
+                         Cost_VAT=numeric(),
+                         Cost_Ex_VAT=numeric(),
+                         VAT=numeric(),
+                         Month=character())
   
   for (file in list.files(costFilePath)){
     if(file_ext(file)=="csv"){
       currentFile <- read.csv(file.path(costFilePath, file),
                               stringsAsFactors = FALSE,
                               col.names = c("Delivery_Company","Tracking_Number",
-                                            "Package_Number","Pickup_Date","Cost"),
-                              colClasses = c("character","character",
-                                             "character","myDate","myNumeric"))
+                                            "Package_Number","Pickup_Date","Cost_VAT",
+                                            "Cost_Ex_VAT","VAT","Month"),
+                              colClasses = c("character","myTrackingNumber",
+                                             "character","myDate","myNumeric",
+                                             "myNumeric","myNumeric","character"))
       costData <- rbind_list(costData,currentFile)
     }
   }
   costData %<>%
-    group_by(Tracking_Number,
-             Package_Number) %>%
-    summarize(Delivery_Company=last(Delivery_Company),
+    arrange(Month) %>%
+    group_by(Tracking_Number) %>%
+    summarize(Package_Number=first(Package_Number),
+              Delivery_Company=last(Delivery_Company),
               Pickup_Date=last(Pickup_Date),
-              Cost=sum(Cost))
+              Cost=sum(Cost_Ex_VAT, na.rm=TRUE),
+              Month=first(Month))
+  
+  costData %<>% filter(Cost>0.0)
+  
   costData
 }

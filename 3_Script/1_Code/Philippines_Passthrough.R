@@ -3,7 +3,15 @@ library(magrittr)
 library(lubridate)
 library(lubridate)
 
-venture <- "Malaysia"
+venture <- "Philippines"
+ventureShort <- switch (venture,
+                        "Indonesia" = "ID",
+                        "Malaysia" = "MY",
+                        "Philippines" = "PH",
+                        "Singapore" = "SG",
+                        "Thailand" = "TH",
+                        "Vietnam" = "VN"
+)
 runningFolderName <- format(Sys.Date(),"%Y%m%d")
 
 source("../1_Code/fn_loadOMSData.R")
@@ -26,6 +34,8 @@ Cost <- loadCostData(manualData)
 SellerCharges <- loadSellerCharges(sellerCharged)
 OMS_Data <- loadOMSData(omsFolder)
 
+Cost
+
 Cost_OMS_Mapped <- left_join(Cost, OMS_Data,
                              by=c("Tracking_Number"="Tracking_number"))
 
@@ -45,7 +55,9 @@ Passthrough_Data %<>%
          Seller_Code, tax_class,
          Item_Cost, Item_SellerCharged)
 
-write.csv(Passthrough_Data, file.path(outputFolder,"MY_Passthrough_data.csv"),
+write.csv(Passthrough_Data, 
+          file.path(outputFolder,
+                    paste0(ventureShort,"_Passthrough_data.csv")),
           row.names = FALSE)
 
 Test <- Cost_OMS_SellerCharge %>% group_by(Tracking_Number) %>%
