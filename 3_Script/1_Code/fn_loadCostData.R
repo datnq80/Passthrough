@@ -52,6 +52,7 @@ loadCostData <- function(costFilePath){
   }
 
   costData %<>% filter(Cost>0.0)
+  costData %<>% mutate(Tracking_Number=ifelse(Tracking_Number=="","EmptyString",Tracking_Number))
   
   costData
 }

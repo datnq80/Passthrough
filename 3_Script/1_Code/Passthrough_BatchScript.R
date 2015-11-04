@@ -2,8 +2,9 @@ library(dplyr)
 library(magrittr)
 library(lubridate)
 library(lubridate)
+library(tidyr)
 
-venture <- "Indonesia"
+venture <- "Thailand"
 ventureShort <- switch (venture,
                         "Indonesia" = "ID",
                         "Malaysia" = "MY",
@@ -39,12 +40,12 @@ Cost_OMS_Mapped <- left_join(Cost, OMS_Data,
                              by=c("Tracking_Number"="tracking_number"))
 
 Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
-  filter(is.na(business_unit)) %>%
+  filter(is.na(business_unit) & Tracking_Number!="EmptyString") %>%
   select(Tracking_Number, Package_Number, Delivery_Company, Pickup_Date, Cost, Month) %>%
   left_join(OMS_Data, by=c("Tracking_Number"="package_number"))
 
 Cost_OMS_Mapped_Final <- Cost_OMS_Mapped %>%
-  filter(!is.na(business_unit))
+  filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
 Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final, select(Cost_OMS_MappedByPackage, -(tracking_number)))
 
 firstMonth <- Cost_OMS_Mapped_Final %>%
