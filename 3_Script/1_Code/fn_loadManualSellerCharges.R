@@ -20,7 +20,7 @@ LoadManualSellerCharges <- function(costFilePath){
                               Pickup_Date=as.POSIXct(character()),
                               Charges_VAT=numeric(),
                               Charges_Ex_VAT=numeric(),
-                              Month=character())
+                              VAT=numeric())
   
   for (file in list.files(costFilePath)){
     if(file_ext(file)=="csv"){
@@ -40,8 +40,10 @@ LoadManualSellerCharges <- function(costFilePath){
     group_by(Tracking_Number) %>%
     summarize(value=sum(Charges_Ex_VAT, na.rm=TRUE))
   
-  sellerCharges <- left_join(sellerCharges, OMS_Data,
-                             by=c("Tracking_Number"="Tracking_number"))
+  sellerCharges %>% filter()
+  OMS_Data_MP <- OMS_Data %>% filter(business_unit=="MP")
+  sellerCharges <- left_join(sellerCharges, OMS_Data_MP,
+                             by=c("Tracking_Number"="tracking_number"))
   
   sellerCharges %<>%
     group_by(Tracking_Number) %>%

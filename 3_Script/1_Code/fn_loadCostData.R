@@ -14,13 +14,11 @@ loadCostData <- function(costFilePath){
   setClass("myTrackingNumber")
   setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
   
-  costData <- data.frame(Delivery_Company=character(),
-                         Tracking_Number=character(),
+  costData <- data.frame(Tracking_Number=character(),
                          Package_Number=character(),
+                         Delivery_Company=character(),
                          Pickup_Date=as.POSIXct(character()),
-                         Cost_VAT=numeric(),
-                         Cost_Ex_VAT=numeric(),
-                         VAT=numeric(),
+                         Cost=numeric(),
                          Month=character())
   
   for (file in list.files(costFilePath)){
@@ -33,18 +31,26 @@ loadCostData <- function(costFilePath){
                               colClasses = c("character","myTrackingNumber",
                                              "character","myDate","myNumeric",
                                              "myNumeric","myNumeric","character"))
+      
+      currentFile %<>%
+        arrange(Month) %>%
+        group_by(Tracking_Number) %>%
+        summarize(Package_Number=first(Package_Number),
+                  Delivery_Company=last(Delivery_Company),
+                  Pickup_Date=last(Pickup_Date),
+                  Cost=sum(Cost_Ex_VAT, na.rm=TRUE),
+                  Month=first(Month)) %>%
+        select(Tracking_Number,
+               Package_Number,
+               Delivery_Company,
+               Pickup_Date,
+               Cost,
+               Month)
+      
       costData <- rbind_list(costData,currentFile)
     }
   }
-  costData %<>%
-    arrange(Month) %>%
-    group_by(Tracking_Number) %>%
-    summarize(Package_Number=first(Package_Number),
-              Delivery_Company=last(Delivery_Company),
-              Pickup_Date=last(Pickup_Date),
-              Cost=sum(Cost_Ex_VAT, na.rm=TRUE),
-              Month=first(Month))
-  
+
   costData %<>% filter(Cost>0.0)
   
   costData
