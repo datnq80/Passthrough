@@ -1,10 +1,10 @@
 library(dplyr)
 library(magrittr)
 library(lubridate)
-library(lubridate)
+library(data.table)
 library(tidyr)
 
-venture <- "Thailand"
+venture <- "Singapore"
 ventureShort <- switch (venture,
                         "Indonesia" = "ID",
                         "Malaysia" = "MY",
@@ -32,21 +32,9 @@ if(!dir.exists(outputFolder)){
   dir.create(outputFolder)
 }
 
-Cost <- loadCostData(manualData)
 OMS_Data <- loadOMSData(omsFolder)
+Cost <- loadCostData(manualData, OMS_Data)
 SellerCharges <- LoadManualSellerCharges(sellerCharged)
-
-Cost_OMS_Mapped <- left_join(Cost, OMS_Data,
-                             by=c("Tracking_Number"="tracking_number"))
-
-Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
-  filter(is.na(business_unit) & Tracking_Number!="EmptyString") %>%
-  select(Tracking_Number, Package_Number, Delivery_Company, Pickup_Date, Cost, Month) %>%
-  left_join(OMS_Data, by=c("Tracking_Number"="package_number"))
-
-Cost_OMS_Mapped_Final <- Cost_OMS_Mapped %>%
-  filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
-Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final, select(Cost_OMS_MappedByPackage, -(tracking_number)))
 
 firstMonth <- Cost_OMS_Mapped_Final %>%
   select(id_sales_order_item,Month) %>%
@@ -54,10 +42,12 @@ firstMonth <- Cost_OMS_Mapped_Final %>%
   filter(!duplicated(id_sales_order_item), !is.na(id_sales_order_item))
 SellerChargesMonth <- SellerCharges %>% 
   left_join(firstMonth, by=c("src_id"="id_sales_order_item")) 
-  
+
 Cost_OMS_SellerCharge <- left_join(Cost_OMS_Mapped_Final, SellerChargesMonth,
                                    by=c("id_sales_order_item"="src_id",
                                         "Month"="Month"))
+Cost_OMS_SellerCharge %<>%
+  replace_na(list(value = 0, Cost = 0))
 
 Passthrough_Data <- Cost_OMS_SellerCharge %>% 
   group_by(Tracking_Number, Month) %>%
@@ -65,15 +55,27 @@ Passthrough_Data <- Cost_OMS_SellerCharge %>%
   group_by(Tracking_Number) %>%
   mutate(Item_SellerCharged=value) %>%
   ungroup()
+Passthrough_Data %<>% arrange(Month)
+Passthrough_Data %<>% 
+  group_by(id_sales_order_item) %>%
+  mutate(accumCost = cumsum(Item_Cost),
+         accumCharges = cumsum(Item_SellerCharged)) %>%
+  ungroup()
+Passthrough_Data <- data.table(Passthrough_Data)
+Passthrough_Data[, Index := 1:.N, by = id_sales_order_item]
+Passthrough_Data <- tbl_df(Passthrough_Data)
 Passthrough_Data %<>%
+  ungroup() %>% group_by(id_sales_order_item) %>%
+  mutate(Item_SellerCharged = ifelse(accumCharges + accumCost + Item_Cost < 0,
+                                     ifelse(Index==n(), accumCharges + accumCost - Item_Cost , - Item_Cost),
+                                     ifelse(accumCharges + accumCost - Item_Cost < 0,
+                                            accumCharges + accumCost - Item_Cost, 0)))
+
+Passthrough_Data %<>%
+  ungroup() %>%
   mutate(Item_SellerCharged = ifelse( is.na(Item_SellerCharged), 0, Item_SellerCharged)) %>%
   mutate(Is_Charged=ifelse(Item_SellerCharged == 0, "No_Charged", "Charged")) %>%
-  mutate(Is_Charged=ifelse(is.na(business_unit),NA,Is_Charged)) %>%
-  group_by(Tracking_Number) %>%
-  mutate(ChargedHistory=sum(Item_SellerCharged, na.rm=TRUE)) %>%
-  ungroup() %>%
-  mutate(Remark=ifelse(ChargedHistory>0 & Item_SellerCharged==0, "Charged_PreviousMonth",Is_Charged))
-  
+  mutate(Remark=ifelse(is.na(business_unit) | business_unit == "Retail", NA, Is_Charged))
 
 Passthrough_Data %<>%
   select(Month,id_sales_order_item, SC_SOI_ID, order_nr,
@@ -94,4 +96,4 @@ for (iMonth in monthReport){
 }
 
 Passthrough_Data %>% group_by(format(RTS_Date, "%Y%m"), business_unit) %>% summarize(ItemCostTotal=sum(Item_Cost),
-                                                   SellerCharges=sum(Item_SellerCharged))
+                                                                                     SellerCharges=sum(Item_SellerCharged))
