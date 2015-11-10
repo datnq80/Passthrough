@@ -14,6 +14,7 @@ loadOMSData <- function(omsDataFolder){
   
   omsDataAll <- data.frame(order_nr=integer(),
                            id_sales_order_item=integer(),
+                           bob_id_sales_order_item=integer(),
                            SC_SOI_ID=integer(),
                            business_unit=character(),
                            payment_method=character(),
@@ -39,7 +40,8 @@ loadOMSData <- function(omsDataFolder){
     if(file_ext(file)=="csv"){
       currentFileData <- read.csv(file.path(omsDataFolder,file),
                                   quote = '"', sep=",",
-                                  col.names=c("order_nr","id_sales_order_item","SC_SOI_ID",
+                                  col.names=c("order_nr","id_sales_order_item","bob_id_sales_order_item",
+                                              "SC_SOI_ID",
                                               "business_unit","payment_method","sku",
                                               "unit_price","paid_price",
                                               "shipping_fee","shipping_surcharge","Item_Status",
@@ -48,6 +50,7 @@ loadOMSData <- function(omsDataFolder){
                                               "shipment_provider_name","Seller_Code",
                                               "tax_class","shipping_city","shipping_region"),
                                   colClasses = c("myInteger","myInteger","myInteger",
+                                                 "myInteger",
                                                  "character","character","character",
                                                  "myNumeric","myNumeric",
                                                  "myNumeric","myNumeric","character",

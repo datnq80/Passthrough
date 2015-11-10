@@ -36,6 +36,8 @@ LoadManualSellerCharges <- function(costFilePath){
     }
   }
   
+  SellerCharges_Item <- filter(sellerCharges, !is.na(Item_Number))
+  
   sellerCharges %<>%
     group_by(Tracking_Number) %>%
     summarize(value=sum(Charges_Ex_VAT, na.rm=TRUE))
