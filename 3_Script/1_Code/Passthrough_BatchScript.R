@@ -4,7 +4,7 @@ library(lubridate)
 library(data.table)
 library(tidyr)
 
-venture <- "Singapore"
+venture <- "Vietnam"
 ventureShort <- switch (venture,
                         "Indonesia" = "ID",
                         "Malaysia" = "MY",
@@ -33,30 +33,25 @@ if(!dir.exists(outputFolder)){
 }
 
 OMS_Data <- loadOMSData(omsFolder)
-Cost <- loadCostData(manualData, OMS_Data)
-SellerCharges <- LoadManualSellerCharges(sellerCharged)
+Item_Cost <- loadCostData(manualData, OMS_Data)
+SellerCharges <- LoadManualSellerCharges(sellerCharged, OMS_Data)
 
-firstMonth <- Cost_OMS_Mapped_Final %>%
+firstMonth <- Item_Cost %>%
   select(id_sales_order_item,Month) %>%
   arrange (Month) %>%
   filter(!duplicated(id_sales_order_item), !is.na(id_sales_order_item))
 SellerChargesMonth <- SellerCharges %>% 
-  left_join(firstMonth, by=c("src_id"="id_sales_order_item")) 
+  left_join(firstMonth, by=c("id_sales_order_item")) 
 
-Cost_OMS_SellerCharge <- left_join(Cost_OMS_Mapped_Final, SellerChargesMonth,
-                                   by=c("id_sales_order_item"="src_id",
-                                        "Month"="Month"))
-Cost_OMS_SellerCharge %<>%
-  replace_na(list(value = 0, Cost = 0))
+Item_Cost_SellerCharge <- left_join(Item_Cost, SellerChargesMonth,
+                                   by=c("id_sales_order_item",
+                                        "Month" = "Month"))
 
-Passthrough_Data <- Cost_OMS_SellerCharge %>% 
-  group_by(Tracking_Number, Month) %>%
-  mutate(Item_Cost=Cost/n()) %>%
-  group_by(Tracking_Number) %>%
-  mutate(Item_SellerCharged=value) %>%
-  ungroup()
-Passthrough_Data %<>% arrange(Month)
-Passthrough_Data %<>% 
+Passthrough_Data <- Item_Cost_SellerCharge %>% 
+  rename(Item_SellerCharged = value) %>%
+  mutate(Item_SellerCharged = ifelse(is.na(Item_SellerCharged),0,Item_SellerCharged))
+
+Passthrough_Data %<>% arrange(Month) %>%
   group_by(id_sales_order_item) %>%
   mutate(accumCost = cumsum(Item_Cost),
          accumCharges = cumsum(Item_SellerCharged)) %>%

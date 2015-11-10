@@ -14,11 +14,13 @@ loadCostData <- function(costFilePath, OMS_Data) {
   setClass("myTrackingNumber")
   setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
   
-  costData <- data.frame(Tracking_Number = character(),
+  costData <- data.frame(Delivery_Company = character(),
+                         Tracking_Number = character(),
                          Package_Number = character(),
-                         Delivery_Company = character(),
                          Pickup_Date = as.POSIXct(character()),
-                         Cost = numeric(),
+                         Cost_VAT = numeric(),
+                         Cost_Ex_VAT = numeric(),
+                         VAT = numeric(),
                          Month = character())
   
   for (file in list.files(costFilePath)){
@@ -32,28 +34,29 @@ loadCostData <- function(costFilePath, OMS_Data) {
                                              "character", "myDate", "myNumeric",
                                              "myNumeric", "myNumeric", "character"))
       
-      currentFile %<>%
-        arrange(Month) %>%
-        group_by(Tracking_Number) %>%
-        summarize(Package_Number = first(Package_Number),
-                  Delivery_Company = last(Delivery_Company),
-                  Pickup_Date = last(Pickup_Date),
-                  Cost = sum(Cost_Ex_VAT, na.rm=TRUE),
-                  Month = first(Month)) %>%
-        select(Tracking_Number,
-               Package_Number,
-               Delivery_Company,
-               Pickup_Date,
-               Cost,
-               Month)
-      
       costData <- rbind_list(costData,currentFile)
     }
   }
 
-  costData %<>% filter(Cost > 0.0)
   costData %<>% mutate(Tracking_Number = ifelse(Tracking_Number == "", "EmptyString",
-                                                Tracking_Number))
+                                                Tracking_Number),
+                       Package_Number = ifelse(Package_Number == "", "EmptyString",
+                                               Package_Number))
+  
+  costData %<>%
+    arrange(Month) %>%
+    group_by(Month, Tracking_Number, Package_Number) %>%
+    summarize(Delivery_Company = last(Delivery_Company),
+              Pickup_Date = last(Pickup_Date),
+              Cost = sum(Cost_Ex_VAT, na.rm=TRUE)) %>%
+    select(Tracking_Number,
+           Package_Number,
+           Delivery_Company,
+           Pickup_Date,
+           Cost,
+           Month)
+  
+  costData %<>% filter(Cost > 0.0)
   
   Cost_OMS_Mapped <- left_join(costData, OMS_Data,
                                by = c("Tracking_Number" = "tracking_number"))
@@ -61,12 +64,22 @@ loadCostData <- function(costFilePath, OMS_Data) {
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
     filter(is.na(business_unit) & Tracking_Number != "EmptyString") %>%
     select(Tracking_Number, Package_Number, Delivery_Company, Pickup_Date, Cost, Month) %>%
-    left_join(OMS_Data, by=c("Tracking_Number" = "package_number"))
+    left_join(OMS_Data, by=c("Package_Number" = "package_number"))
   
   Cost_OMS_Mapped_Final <- Cost_OMS_Mapped %>%
     filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
   Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final, select(Cost_OMS_MappedByPackage, -(tracking_number)))
   
+  Item_Cost <- Cost_OMS_Mapped_Final %>%
+    group_by(Month, Tracking_Number, Package_Number) %>%
+    mutate(Item_Cost = Cost / n()) %>%
+    ungroup() %>%
+    select(Month,id_sales_order_item, SC_SOI_ID, order_nr,
+           business_unit, payment_method, Tracking_Number,
+           Package_Number, RTS_Date, Shipped_Date,
+           Cancelled_Date, Delivered_Date, shipment_provider_name,
+           Seller_Code, tax_class,
+           Item_Cost)
   
-  Cost_OMS_Mapped_Final
+  Item_Cost
 }
