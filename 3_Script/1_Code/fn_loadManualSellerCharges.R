@@ -19,6 +19,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   
   sellerCharges <- data.frame(Seller_Name=character(),
                               Tracking_Number=character(),
+                              Package_Number=character(),
                               Item_Number=integer(),
                               Pickup_Date=as.POSIXct(character()),
                               Charges_VAT=numeric(),
@@ -77,7 +78,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   itemCharged %<>%
     filter(!is.na(id_sales_order_item)) %>%
     group_by(id_sales_order_item) %>%
-    summarize(value=sum(item_Charges))
+    summarize(value=-abs(sum(item_Charges)))
   
   itemCharged
 }

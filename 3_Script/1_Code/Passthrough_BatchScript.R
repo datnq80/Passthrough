@@ -1,10 +1,13 @@
-library(dplyr)
-library(magrittr)
-library(lubridate)
-library(data.table)
-library(tidyr)
+library(dplyr, quietly = TRUE)
+library(magrittr, quietly = TRUE)
+library(lubridate, quietly = TRUE)
+library(data.table, quietly = TRUE)
+library(tidyr, quietly = TRUE)
 
-venture <- "Vietnam"
+args <- commandArgs(trailingOnly = TRUE)
+venture <- args[1]
+dimWeightFactor <- as.numeric(args[2])
+
 ventureShort <- switch (venture,
                         "Indonesia" = "ID",
                         "Malaysia" = "MY",
@@ -15,27 +18,40 @@ ventureShort <- switch (venture,
 )
 runningFolderName <- format(Sys.Date(),"%Y%m%d")
 
-source("../1_Code/fn_loadCostData.R")
-source("../1_Code/fn_loadOMSData.R")
-source("../1_Code/fn_loadSellerCharges.R")
-source("../1_Code/fn_loadManualSellerCharges.R")
+source("3_Script/1_Code/fn_loadCostData.R")
+source("3_Script/1_Code/fn_loadOMSData.R")
+source("3_Script/1_Code/fn_loadSellerCharges.R")
+source("3_Script/1_Code/fn_loadManualSellerCharges.R")
+source("3_Script/1_Code/fn_LoadSKUDimWeight.R")
 
-omsFolder <- file.path("../../1_Input",venture,"OMS_Data")
-sellerCharged <- file.path("../../1_Input",venture,"Seller_Charges_Data")
-manualData <- file.path("../../1_Input",venture,"Manual_Data")
-outputFolder <- file.path("../../2_Output",runningFolderName)
+omsFolder <- file.path("1_Input",venture,"OMS_Data")
+sellerCharged <- file.path("1_Input",venture,"Seller_Charges_Data")
+manualData <- file.path("1_Input",venture,"Manual_Data")
+LEXCostPath <- file.path("1_Input",venture,"LEX_Cost",
+                         paste0(ventureShort,"_LEX_Cost.csv"))
+skuDimensionPath <- file.path("1_Input",venture,"SKU_Dimension")
+outputFolder <- file.path("2_Output",runningFolderName)
+
 if(!dir.exists(outputFolder)){
   dir.create(outputFolder)
 }
 outputFolder <- file.path(outputFolder,venture)
+
 if(!dir.exists(outputFolder)){
   dir.create(outputFolder)
 }
 
+print("Loading OMS Data...")
 OMS_Data <- loadOMSData(omsFolder)
-Item_Cost <- loadCostData(manualData, OMS_Data)
+print("Loading SKU Dimension Data...")
+SKUDimWeight <- LoadSKUDimWeight(skuDimensionPath, dimWeightFactor)
+print("Loading Cost Data...")
+Item_Cost <- loadCostData(manualData, LEXCostPath, 
+                          OMS_Data, SKUDimWeight)
+print("Loading Seller Charges Data...")
 SellerCharges <- LoadManualSellerCharges(sellerCharged, OMS_Data)
 
+print("Passthrough Calculation...")
 firstMonth <- Item_Cost %>%
   select(id_sales_order_item,Month) %>%
   arrange (Month) %>%
@@ -79,7 +95,7 @@ Passthrough_Data %<>%
          Cancelled_Date, Delivered_Date, shipment_provider_name,
          Seller_Code, tax_class,
          Item_Cost, Item_SellerCharged,
-         Remark)
+         Remark, bob_id_sales_order_item)
 
 monthReport <- unique(Passthrough_Data$Month)
 
@@ -89,6 +105,3 @@ for (iMonth in monthReport){
                       paste0(ventureShort,"_",iMonth,"_Passthrough_data.csv")),
             row.names = FALSE)
 }
-
-Passthrough_Data %>% group_by(format(RTS_Date, "%Y%m"), business_unit) %>% summarize(ItemCostTotal=sum(Item_Cost),
-                                                                                     SellerCharges=sum(Item_SellerCharged))
