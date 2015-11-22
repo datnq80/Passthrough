@@ -10,10 +10,10 @@ runningFolderName <- '20151014'
 runningFolder <- file.path("../../1_Input",runningFolderName)
 omsFolder <- file.path("../../1_Input/OMS_Data")
 sellerCharged <- file.path("../../1_Input/Seller_Charges_Data/")
-venture <- "Malaysia"
-ventureShort <- "MY"
+venture <- "Phillipines"
+ventureShort <- "PH"
 omsVentureFolder <- file.path(omsFolder,venture)
-
+LEXCost <- 24388617
 outputFodler <- file.path("../../2_Output",runningFolderName)
 if(!dir.exists(outputFodler)){
     dir.create(outputFodler)
@@ -27,7 +27,7 @@ if(!dir.exists(file.path(outputFodler,venture))){
 Cost <- loadCostData(file.path(runningFolder,venture,paste0(ventureShort,"_Cost_Data_Formmatted.csv")))
 SellerCharges <- loadSellerCharges(file.path(sellerCharged,venture))
 OMS_Data <- loadOMSData(omsVentureFolder)
-
+lexPackage <- filter(OMS_Data, sh)
 CombinedData <- right_join(OMS_Data, Cost,
                           by=c("tracking_number"="Tracking.Number"))
 

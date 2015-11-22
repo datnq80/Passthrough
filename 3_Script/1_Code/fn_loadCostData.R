@@ -1,4 +1,5 @@
-loadCostData <- function(costFilePath, OMS_Data) {
+loadCostData <- function(costFilePath, LEXCostPath, 
+                         OMS_Data, SKUDimWeight) {
   
   require(dplyr, quietly = TRUE)
   require(tools, quietly = TRUE)
@@ -14,11 +15,32 @@ loadCostData <- function(costFilePath, OMS_Data) {
   setClass("myTrackingNumber")
   setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
   
-  costData <- data.frame(Tracking_Number = character(),
+  LoadLexCost <- function(LEXCostPath, OMS_Data) {
+    LEXCost <- read.csv(LEXCostPath, 
+                        col.names = c("Month", "totalCost"),
+                        colClasses = c("character", "numeric"))
+    LEXTrackings <- OMS_Data %>%
+      filter(grepl("LEX", shipment_provider_name),
+             tracking_number != "") %>%
+      mutate(Month=format(Shipped_Date, "%Y%m")) %>%
+      select(Month, tracking_number) %>%
+      filter(!duplicated(tracking_number))
+    LEXCostTrackings <- left_join(LEXTrackings, LEXCost, by = "Month") %>%
+      filter(!is.na(totalCost) & totalCost > 0) %>%
+      group_by(Month) %>%
+      mutate(Cost = totalCost / n()) %>%
+      ungroup() %>%
+      select(Month, Tracking_Number = tracking_number,
+             Cost)
+  }
+  
+  costData <- data.frame(Delivery_Company = character(),
+                         Tracking_Number = character(),
                          Package_Number = character(),
-                         Delivery_Company = character(),
                          Pickup_Date = as.POSIXct(character()),
-                         Cost = numeric(),
+                         Cost_VAT = numeric(),
+                         Cost_Ex_VAT = numeric(),
+                         VAT = numeric(),
                          Month = character())
   
   for (file in list.files(costFilePath)){
@@ -32,41 +54,64 @@ loadCostData <- function(costFilePath, OMS_Data) {
                                              "character", "myDate", "myNumeric",
                                              "myNumeric", "myNumeric", "character"))
       
-      currentFile %<>%
-        arrange(Month) %>%
-        group_by(Tracking_Number) %>%
-        summarize(Package_Number = first(Package_Number),
-                  Delivery_Company = last(Delivery_Company),
-                  Pickup_Date = last(Pickup_Date),
-                  Cost = sum(Cost_Ex_VAT, na.rm=TRUE),
-                  Month = first(Month)) %>%
-        select(Tracking_Number,
-               Package_Number,
-               Delivery_Company,
-               Pickup_Date,
-               Cost,
-               Month)
-      
       costData <- rbind_list(costData,currentFile)
     }
   }
 
-  costData %<>% filter(Cost > 0.0)
   costData %<>% mutate(Tracking_Number = ifelse(Tracking_Number == "", "EmptyString",
-                                                Tracking_Number))
+                                                Tracking_Number),
+                       Package_Number = ifelse(Package_Number == "", "EmptyString",
+                                               Package_Number))
+  nonLexCost <- costData %>%
+    arrange(Month) %>%
+    group_by(Month, Tracking_Number, Package_Number) %>%
+    summarize(Delivery_Company = last(Delivery_Company),
+              Pickup_Date = last(Pickup_Date),
+              Cost = sum(Cost_Ex_VAT, na.rm=TRUE)) %>%
+    select(Tracking_Number,
+           Package_Number,
+           Cost,
+           Month)
+  
+  nonLexCost %<>% filter(Cost > 0.0)
+  LEXCost <- LoadLexCost(LEXCostPath, OMS_Data)
+  costData <- rbind_list(nonLexCost, LEXCost)  
+  
+  
   
   Cost_OMS_Mapped <- left_join(costData, OMS_Data,
                                by = c("Tracking_Number" = "tracking_number"))
   
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
     filter(is.na(business_unit) & Tracking_Number != "EmptyString") %>%
-    select(Tracking_Number, Package_Number, Delivery_Company, Pickup_Date, Cost, Month) %>%
-    left_join(OMS_Data, by=c("Tracking_Number" = "package_number"))
+    select(Tracking_Number, Package_Number, shipment_provider_name, Cost, Month) %>%
+    left_join(OMS_Data, by=c("Package_Number" = "package_number"))
   
   Cost_OMS_Mapped_Final <- Cost_OMS_Mapped %>%
     filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
   Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final, select(Cost_OMS_MappedByPackage, -(tracking_number)))
   
+  Cost_OMS_Mapped_Final %<>%
+    left_join(SKUDimWeight, by = c("sku" = "sku"))
   
-  Cost_OMS_Mapped_Final
+  Item_Cost <- Cost_OMS_Mapped_Final %>%
+    filter(Cost > 0) %>%
+    group_by(Month, Tracking_Number, Package_Number) %>%
+    mutate(pkgWeight = ifelse(any(is.na(weight) | weight == 0), 0,
+                              sum(weight))) %>%
+    mutate(Item_Cost = Cost / ifelse(pkgWeight == 0, n(), pkgWeight / weight)) %>%
+    ungroup() %>%
+    select(Month,id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, order_nr,
+           business_unit, payment_method, Tracking_Number,
+           Package_Number, RTS_Date, Shipped_Date,
+           Cancelled_Date, Delivered_Date, shipment_provider_name,
+           Seller_Code, tax_class,
+           Item_Cost)
+  
+  Item_Cost %<>%
+    group_by(Month, id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID) %>%
+    mutate(Item_Cost = sum(Item_Cost)) %>%
+    filter(!duplicate(id_sales_order_item))
+  
+  Item_Cost
 }
