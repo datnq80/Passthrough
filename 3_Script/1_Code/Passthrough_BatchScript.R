@@ -8,14 +8,8 @@ suppressMessages({
 })
 
 dateLog <- format(Sys.time(), "%Y%m%d%H%M")
-addHandler(writeToFile, logger="Passthrough",
-           file=file.path("3_Script/2_Log",
-                          paste0("passthrough",dateLog,".csv")))
-addHandler(writeToConsole , logger="Passthrough.Console")
 
 tryCatch({
-  
-  loginfo("Initial Setup", logger = "Passthrough")
   
   args <- commandArgs(trailingOnly = TRUE)
   venture <- args[1]
@@ -29,6 +23,15 @@ tryCatch({
                           "Thailand" = "TH",
                           "Vietnam" = "VN"
   )
+  
+  addHandler(writeToFile, logger="Passthrough",
+             file=file.path("3_Script/2_Log",
+                            paste0(ventureShort,"_passthrough_",dateLog,".csv")))
+  addHandler(writeToConsole , logger="Passthrough.Console")
+  
+  loginfo("Initial Setup", logger = "Passthrough")
+  
+  
   runningFolderName <- format(Sys.Date(),"%Y%m%d")
   
   source("3_Script/1_Code/fn_loadCostData.R")
