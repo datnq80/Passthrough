@@ -29,6 +29,7 @@ tryCatch({
                             paste0(ventureShort,"_passthrough_",dateLog,".csv")))
   addHandler(writeToConsole , logger="Passthrough.Console")
   
+  loginfo(paste0(venture, " - Passthrough Start"), logger = "Passthrough.Console")
   loginfo("Initial Setup", logger = "Passthrough")
   
   
@@ -122,7 +123,7 @@ tryCatch({
                         paste0(ventureShort,"_",iMonth,"_Passthrough_data.csv")),
               row.names = FALSE)
   }
-  loginfo("Done!!!", logger = "Passthrough.Console")
+  loginfo(paste0(venture, " - Passthrough Done!!!"), logger = "Passthrough.Console")
 },error = function(err){
   logerror(err, logger = "Passthrough")
   logerror("PLease send 3_Script/Log folder to Regional OPS BI for additional support",
