@@ -63,19 +63,29 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   iProgress <- 2
   setTxtProgressBar(pb, iProgress)
   
-  OMS_Data_MP_Tracking <- OMS_Data_MP %>%
-    filter(!duplicated(tracking_number, id_sales_order_item))
   SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
+  trackingFilter <- SellerCharges_Tracking$tracking_number
+  OMS_Data_MP_Tracking <- OMS_Data_MP %>%
+    filter(tracking_number %in% trackingFilter) %>%
+    filter(!duplicated(tracking_number, id_sales_order_item))
   SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP_Tracking,
                                           by = c("tracking_number" = "tracking_number"))
+  SellerCharges_Tracking_OMS %<>%
+    mutate(package_number = ifelse(is.na(bob_id_sales_order_item), 
+                                   package_number.x, package_number.y)) %>%
+    select(-c(package_number.x, package_number.y))
   
   iProgress <- 3
   setTxtProgressBar(pb, iProgress)
   
+  SellerCharges_Package <- SellerCharges_Tracking_OMS %>%
+    filter(is.na(bob_id_sales_order_item)) %>%
+    select(Seller_Name, package_number, Pickup_Date, Charges_VAT,
+           Charges_Ex_VAT, VAT)
+  packageFilter <- SellerCharges_Package$package_number
   OMS_Data_MP_Package <- OMS_Data_MP %>%
+    filter(package_number %in% packageFilter) %>%
     filter(!duplicated(package_number, id_sales_order_item))
-  SellerCharges_Package <- filter(SellerCharges_Tracking_OMS, is.na(bob_id_sales_order_item)) %>%
-    select(1:8)
   SellerCharges_Package_OMS <- left_join(SellerCharges_Package, OMS_Data_MP,
                                          by = c("package_number" = "package_number"))
   
