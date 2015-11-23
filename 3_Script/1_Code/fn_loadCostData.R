@@ -111,7 +111,8 @@ loadCostData <- function(costFilePath, LEXCostPath,
   Item_Cost %<>%
     group_by(Month, id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID) %>%
     mutate(Item_Cost = sum(Item_Cost)) %>%
-    filter(!duplicate(id_sales_order_item))
+    filter(!duplicated(id_sales_order_item)) %>%
+    ungroup()
 
   Item_Cost
 }
