@@ -46,12 +46,14 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
                             Package_Number = ifelse(Package_Number == "", "EmptyString",
                                                     Package_Number))
   OMS_Data_MP <- OMS_Data %>% filter(business_unit == "MP")
+  OMS_Data_MP_Item <- OMS_Data_MP %>%
+    filter(!duplicated(bob_id_sales_order_item))
   
   SellerCharges_Item <- filter(sellerCharges, !is.na(Item_Number))
-  SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
-  
-  SellerCharges_Item_OMS <- left_join(SellerCharges_Item, OMS_Data_MP,
+  SellerCharges_Item_OMS <- left_join(SellerCharges_Item, OMS_Data_MP_Item,
                                       by = c("Item_Number"= "bob_id_sales_order_item"))
+  
+  SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
   SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP,
                                           by = c("Tracking_Number" = "tracking_number"))
   SellerCharges_Package <- filter(SellerCharges_Tracking_OMS, is.na(bob_id_sales_order_item)) %>%
@@ -73,6 +75,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   
   itemChargedItem <- SellerCharges_Item_OMS %>%
     select(id_sales_order_item, bob_id_sales_order_item=Item_Number, SC_SOI_ID, item_Charges=Charges_Ex_VAT)
+  
   itemCharged <- rbind_list(itemChargedTracking, itemChargedPackage, itemChargedItem)
   
   itemCharged %<>%
