@@ -77,11 +77,13 @@ loadCostData <- function(costFilePath, LEXCostPath,
   LEXCost <- LoadLexCost(LEXCostPath, OMS_Data)
   costData <- rbind_list(nonLexCost, LEXCost)  
   
-  
-  
-  Cost_OMS_Mapped <- left_join(costData, OMS_Data,
+  OMS_Data_Tracking <- OMS_Data %>%
+    filter(!duplicated(tracking_number, id_sales_order_item))
+  Cost_OMS_Mapped <- left_join(costData, OMS_Data_Tracking,
                                by = c("Tracking_Number" = "tracking_number"))
   
+  OMS_Data_Package <- OMS_Data %>%
+    filter(!duplicated(package_number, id_sales_order_item))
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
     filter(is.na(business_unit) & Tracking_Number != "EmptyString") %>%
     select(Tracking_Number, Package_Number, shipment_provider_name, Cost, Month) %>%

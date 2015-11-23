@@ -53,9 +53,14 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   SellerCharges_Item_OMS <- left_join(SellerCharges_Item, OMS_Data_MP_Item,
                                       by = c("Item_Number"= "bob_id_sales_order_item"))
   
+  OMS_Data_MP_Tracking <- OMS_Data_MP %>%
+    filter(!duplicated(tracking_number, id_sales_order_item))
   SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
-  SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP,
+  SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP_Tracking,
                                           by = c("Tracking_Number" = "tracking_number"))
+  
+  OMS_Data_MP_Package <- OMS_Data_MP %>%
+    filter(!duplicated(package_number, id_sales_order_item))
   SellerCharges_Package <- filter(SellerCharges_Tracking_OMS, is.na(bob_id_sales_order_item)) %>%
     select(1:8)
   SellerCharges_Package_OMS <- left_join(SellerCharges_Package, OMS_Data_MP,
