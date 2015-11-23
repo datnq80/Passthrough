@@ -29,14 +29,18 @@ loadCostData <- function(costFilePath, LEXCostPath,
              tracking_number != "") %>%
       mutate(Month=format(Shipped_Date, "%Y%m")) %>%
       select(Month, tracking_number) %>%
-      filter(!duplicated(tracking_number))
+      filter(!duplicated(tracking_number, id_sales_order_item))
     LEXCostTrackings <- left_join(LEXTrackings, LEXCost, by = "Month") %>%
       filter(!is.na(totalCost) & totalCost > 0) %>%
-      group_by(Month) %>%
-      mutate(Cost = totalCost / n()) %>%
+      group_by(Month, tracking_number) %>%
+      mutate(Item_Cost = totalCost / n()) %>%
       ungroup() %>%
-      select(Month, Tracking_Number = tracking_number,
-             Cost)
+      select(Month,id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, order_nr,
+             business_unit, payment_method, Tracking_Number = tracking_number,
+             Package_Number, RTS_Date, Shipped_Date,
+             Cancelled_Date, Delivered_Date, shipment_provider_name,
+             Seller_Code, tax_class,
+             Item_Cost)
   }
   
   costData <- data.frame(Delivery_Company = character(),
@@ -83,27 +87,27 @@ loadCostData <- function(costFilePath, LEXCostPath,
   
   nonLexCost %<>% filter(Cost > 0.0)
   LEXCost <- LoadLexCost(LEXCostPath, OMS_Data)
-  costData <- rbind_list(nonLexCost, LEXCost)  
   
   iProgress <- 2
   setTxtProgressBar(pb, iProgress)
   
   OMS_Data_Tracking <- OMS_Data %>%
     filter(!duplicated(tracking_number, id_sales_order_item))
-  Cost_OMS_Mapped <- left_join(costData, OMS_Data_Tracking,
+  Cost_OMS_Mapped <- left_join(nonLexCost, OMS_Data_Tracking,
                                by = c("Tracking_Number" = "tracking_number"))
   
   OMS_Data_Package <- OMS_Data %>%
     filter(!duplicated(package_number, id_sales_order_item))
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
-    filter(is.na(business_unit) & Tracking_Number != "EmptyString") %>%
+    filter(is.na(business_unit) & Package_Number != "EmptyString") %>%
     select(Tracking_Number, Package_Number, shipment_provider_name, Cost, Month) %>%
     left_join(OMS_Data, by=c("Package_Number" = "package_number"))
   
   Cost_OMS_Mapped_Final <- Cost_OMS_Mapped %>%
     filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
-  Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final, select(Cost_OMS_MappedByPackage, -(tracking_number)))
-  
+  Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final,
+                                      select(Cost_OMS_MappedByPackage, -(tracking_number)),
+                                      LEXCost)
   iProgress <- 3
   setTxtProgressBar(pb, iProgress)
   
@@ -132,6 +136,9 @@ loadCostData <- function(costFilePath, LEXCostPath,
     mutate(Item_Cost = sum(Item_Cost)) %>%
     filter(!duplicated(id_sales_order_item)) %>%
     ungroup()
+  
+
+  
   
   iProgress <- 5
   setTxtProgressBar(pb, iProgress)
