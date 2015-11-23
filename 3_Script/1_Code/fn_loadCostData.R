@@ -1,10 +1,15 @@
 loadCostData <- function(costFilePath, LEXCostPath, 
                          OMS_Data, SKUDimWeight) {
+  suppressMessages({
+    require(dplyr, quietly = TRUE)
+    require(tools, quietly = TRUE)
+    require(magrittr, quietly = TRUE)
+    require(methods, quietly= TRUE)
+  })
   
-  require(dplyr, quietly = TRUE)
-  require(tools, quietly = TRUE)
-  require(magrittr, quietly = TRUE)
-  require(methods, quietly= TRUE)
+  pb <- txtProgressBar(min=0,max=5, style = 3)
+  iProgress <- 0
+  setTxtProgressBar(pb, iProgress)
   
   setClass('myDate')
   setAs("character","myDate", function(from) as.POSIXct(substr(from,1,10), format="%Y-%m-%d")) #covnert datetime string to datetime
@@ -57,7 +62,10 @@ loadCostData <- function(costFilePath, LEXCostPath,
       costData <- rbind_list(costData,currentFile)
     }
   }
-
+  
+  iProgress <- 1
+  setTxtProgressBar(pb, iProgress)
+  
   costData %<>% mutate(Tracking_Number = ifelse(Tracking_Number == "", "EmptyString",
                                                 Tracking_Number),
                        Package_Number = ifelse(Package_Number == "", "EmptyString",
@@ -77,6 +85,9 @@ loadCostData <- function(costFilePath, LEXCostPath,
   LEXCost <- LoadLexCost(LEXCostPath, OMS_Data)
   costData <- rbind_list(nonLexCost, LEXCost)  
   
+  iProgress <- 2
+  setTxtProgressBar(pb, iProgress)
+  
   OMS_Data_Tracking <- OMS_Data %>%
     filter(!duplicated(tracking_number, id_sales_order_item))
   Cost_OMS_Mapped <- left_join(costData, OMS_Data_Tracking,
@@ -93,8 +104,14 @@ loadCostData <- function(costFilePath, LEXCostPath,
     filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
   Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final, select(Cost_OMS_MappedByPackage, -(tracking_number)))
   
+  iProgress <- 3
+  setTxtProgressBar(pb, iProgress)
+  
   Cost_OMS_Mapped_Final %<>%
     left_join(SKUDimWeight, by = c("sku" = "sku"))
+  
+  iProgress <- 4
+  setTxtProgressBar(pb, iProgress)
   
   Item_Cost <- Cost_OMS_Mapped_Final %>%
     filter(Cost > 0) %>%
@@ -115,6 +132,10 @@ loadCostData <- function(costFilePath, LEXCostPath,
     mutate(Item_Cost = sum(Item_Cost)) %>%
     filter(!duplicated(id_sales_order_item)) %>%
     ungroup()
-
+  
+  iProgress <- 5
+  setTxtProgressBar(pb, iProgress)
+  cat("\r\n")
+  
   Item_Cost
 }

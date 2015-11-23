@@ -5,6 +5,10 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   require(magrittr, quietly = TRUE)
   require(methods, quietly= TRUE)
   
+  pb <- txtProgressBar(min=0,max=5, style = 3)
+  iProgress <- 0
+  setTxtProgressBar(pb, iProgress)
+  
   #covnert datetime string to datetime
   setClass('myDate')
   setAs("character","myDate", function(from) as.POSIXct(substr(from,  1,10),
@@ -40,6 +44,9 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     }
   }
   
+  iProgress <- 1
+  setTxtProgressBar(pb, iProgress)
+  
   sellerCharges %<>% filter(!is.na(Charges_Ex_VAT) & Charges_Ex_VAT != 0)
   sellerCharges %<>% mutate(Tracking_Number = ifelse(Tracking_Number == "", "EmptyString",
                                                 Tracking_Number),
@@ -53,11 +60,17 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   SellerCharges_Item_OMS <- left_join(SellerCharges_Item, OMS_Data_MP_Item,
                                       by = c("Item_Number"= "bob_id_sales_order_item"))
   
+  iProgress <- 2
+  setTxtProgressBar(pb, iProgress)
+  
   OMS_Data_MP_Tracking <- OMS_Data_MP %>%
     filter(!duplicated(tracking_number, id_sales_order_item))
   SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
   SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP_Tracking,
                                           by = c("Tracking_Number" = "tracking_number"))
+  
+  iProgress <- 3
+  setTxtProgressBar(pb, iProgress)
   
   OMS_Data_MP_Package <- OMS_Data_MP %>%
     filter(!duplicated(package_number, id_sales_order_item))
@@ -65,6 +78,9 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     select(1:8)
   SellerCharges_Package_OMS <- left_join(SellerCharges_Package, OMS_Data_MP,
                                          by = c("Package_Number" = "package_number"))
+  
+  iProgress <- 3
+  setTxtProgressBar(pb, iProgress)
   
   itemChargedTracking <- SellerCharges_Tracking_OMS %>%
     group_by(Tracking_Number) %>%
@@ -78,6 +94,9 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     ungroup() %>%
     select(id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, item_Charges)
   
+  iProgress <- 4
+  setTxtProgressBar(pb, iProgress)
+  
   itemChargedItem <- SellerCharges_Item_OMS %>%
     select(id_sales_order_item, bob_id_sales_order_item=Item_Number, SC_SOI_ID, item_Charges=Charges_Ex_VAT)
   
@@ -87,6 +106,11 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     filter(!is.na(id_sales_order_item)) %>%
     group_by(id_sales_order_item) %>%
     summarize(value=-abs(sum(item_Charges)))
+  
+  iProgress <- 5
+  setTxtProgressBar(pb, iProgress)
+  
+  cat("\r\n")
   
   itemCharged
 }

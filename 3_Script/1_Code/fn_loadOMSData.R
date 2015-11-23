@@ -36,6 +36,11 @@ loadOMSData <- function(omsDataFolder){
                            shipping_city=character(),
                            shipping_region=character())
   
+  filesCount <- sum(grepl("\\.csv",list.files(omsDataFolder)))
+  pb <- txtProgressBar(min=0,max=filesCount, style = 3)
+  iProgress <- 0
+  setTxtProgressBar(pb, iProgress)
+  
   for (file in list.files(omsDataFolder)){
     if(file_ext(file)=="csv"){
       currentFileData <- read.csv(file.path(omsDataFolder,file),
@@ -63,11 +68,16 @@ loadOMSData <- function(omsDataFolder){
         omsDataAll <- currentFileData
       else
         omsDataAll <- rbind_list(omsDataAll,currentFileData)
+      
+      iProgress <- iProgress + 1
+      setTxtProgressBar(pb, iProgress)
     }
   }
+  cat("\r\n")
   
   omsDataAll %<>%
     mutate(tracking_number=gsub("^0","",tracking_number)) #remove leading ZERO of tracking number to mapped with Invoice Data
+  
   
   omsDataAll
 }
