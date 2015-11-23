@@ -107,8 +107,8 @@ tryCatch({
   
   Passthrough_Data %<>%
     select(Month,id_sales_order_item, SC_SOI_ID, order_nr,
-           business_unit, payment_method, Tracking_Number,
-           Package_Number, RTS_Date, Shipped_Date,
+           business_unit, payment_method, tracking_number,
+           package_number, RTS_Date, Shipped_Date,
            Cancelled_Date, Delivered_Date, shipment_provider_name,
            Seller_Code, tax_class,
            Item_Cost, Item_SellerCharged,

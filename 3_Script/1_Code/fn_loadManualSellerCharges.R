@@ -22,8 +22,8 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
   
   sellerCharges <- data.frame(Seller_Name=character(),
-                              Tracking_Number=character(),
-                              Package_Number=character(),
+                              tracking_number=character(),
+                              package_number=character(),
                               Item_Number=integer(),
                               Pickup_Date=as.POSIXct(character()),
                               Charges_VAT=numeric(),
@@ -34,7 +34,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     if(file_ext(file)=="csv"){
       currentFile <- read.csv(file.path(costFilePath, file),
                               stringsAsFactors = FALSE,
-                              col.names = c("Seller_Name","Tracking_Number","Package_Number",
+                              col.names = c("Seller_Name","tracking_number","package_number",
                                             "Item_Number","Pickup_Date","Charges_VAT",
                                             "Charges_Ex_VAT","VAT"),
                               colClasses = c("character","myTrackingNumber","myTrackingNumber",

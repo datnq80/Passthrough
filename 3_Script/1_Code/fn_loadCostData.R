@@ -29,17 +29,19 @@ loadCostData <- function(costFilePath, LEXCostPath,
              tracking_number != "") %>%
       filter(!duplicated(tracking_number, id_sales_order_item)) %>%
       mutate(Month=format(Shipped_Date, "%Y%m"))
+    
     LEXCostTrackings <- left_join(LEXTrackings, LEXCost, by = "Month") %>%
       filter(!is.na(totalCost) & totalCost > 0) %>%
       group_by(Month) %>%
       mutate(Item_Cost = totalCost / n()) %>%
-      ungroup() %>%
+      ungroup() 
+    
+    LEXCostTrackings %>%
       select(Month, id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, order_nr,
              business_unit, payment_method, Tracking_Number = tracking_number,
-             Package_Number, RTS_Date, Shipped_Date,
+             package_number, RTS_Date, Shipped_Date,
              Cancelled_Date, Delivered_Date, shipment_provider_name,
-             Seller_Code, tax_class,
-             Item_Cost)
+             Seller_Code, tax_class,Item_Cost)
   }
   
   costData <- data.frame(Delivery_Company = character(),
