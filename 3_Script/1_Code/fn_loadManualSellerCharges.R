@@ -88,7 +88,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     filter(!duplicated(package_number, id_sales_order_item))
   SellerCharges_Package_OMS <- left_join(SellerCharges_Package, OMS_Data_MP,
                                          by = c("package_number" = "package_number"))
-  SellerCharges_Package_OMS %>%
+  SellerCharges_Package_OMS %<>%
     mutate(tracking_number = ifelse(is.na(bob_id_sales_order_item), 
                                     tracking_number.x, tracking_number.y)) %>%
     select(-c(tracking_number.x, tracking_number.y))
