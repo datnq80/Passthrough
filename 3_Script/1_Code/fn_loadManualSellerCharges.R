@@ -48,10 +48,10 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   setTxtProgressBar(pb, iProgress)
   
   sellerCharges %<>% filter(!is.na(Charges_Ex_VAT) & Charges_Ex_VAT != 0)
-  sellerCharges %<>% mutate(Tracking_Number = ifelse(Tracking_Number == "", "EmptyString",
-                                                Tracking_Number),
-                            Package_Number = ifelse(Package_Number == "", "EmptyString",
-                                                    Package_Number))
+  sellerCharges %<>% mutate(tracking_number = ifelse(tracking_number == "", "EmptyString",
+                                                tracking_number),
+                            package_number = ifelse(package_number == "", "EmptyString",
+                                                    package_number))
   OMS_Data_MP <- OMS_Data %>% filter(business_unit == "MP")
   OMS_Data_MP_Item <- OMS_Data_MP %>%
     filter(!duplicated(bob_id_sales_order_item))
@@ -67,7 +67,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     filter(!duplicated(tracking_number, id_sales_order_item))
   SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
   SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP_Tracking,
-                                          by = c("Tracking_Number" = "tracking_number"))
+                                          by = c("tracking_number" = "tracking_number"))
   
   iProgress <- 3
   setTxtProgressBar(pb, iProgress)
@@ -77,19 +77,19 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   SellerCharges_Package <- filter(SellerCharges_Tracking_OMS, is.na(bob_id_sales_order_item)) %>%
     select(1:8)
   SellerCharges_Package_OMS <- left_join(SellerCharges_Package, OMS_Data_MP,
-                                         by = c("Package_Number" = "package_number"))
+                                         by = c("package_number" = "package_number"))
   
   iProgress <- 3
   setTxtProgressBar(pb, iProgress)
   
   itemChargedTracking <- SellerCharges_Tracking_OMS %>%
-    group_by(Tracking_Number) %>%
+    group_by(tracking_number) %>%
     mutate(item_Charges = Charges_Ex_VAT / n()) %>% 
     ungroup() %>%
     select(id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, item_Charges)
   
   itemChargedPackage <- SellerCharges_Package_OMS %>%
-    group_by(Package_Number) %>%
+    group_by(package_number) %>%
     mutate(item_Charges = Charges_Ex_VAT / n()) %>%
     ungroup() %>%
     select(id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, item_Charges)

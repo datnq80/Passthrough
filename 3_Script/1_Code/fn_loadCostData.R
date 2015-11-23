@@ -27,6 +27,7 @@ loadCostData <- function(costFilePath, LEXCostPath,
     LEXTrackings <- OMS_Data %>%
       filter(grepl("LEX", shipment_provider_name),
              tracking_number != "") %>%
+      arrange(tracking_number, id_sales_order_item) %>%
       filter(!duplicated(tracking_number, id_sales_order_item)) %>%
       mutate(Month=format(Shipped_Date, "%Y%m"))
     
@@ -93,11 +94,13 @@ loadCostData <- function(costFilePath, LEXCostPath,
   setTxtProgressBar(pb, iProgress)
   
   OMS_Data_Tracking <- OMS_Data %>%
+    arrange(tracking_number, id_sales_order_item) %>%
     filter(!duplicated(tracking_number, id_sales_order_item))
   Cost_OMS_Mapped <- left_join(nonLexCost, OMS_Data_Tracking,
                                by = c("Tracking_Number" = "tracking_number"))
   
   OMS_Data_Package <- OMS_Data %>%
+    arrange(package_number, id_sales_order_item) %>%
     filter(!duplicated(package_number, id_sales_order_item))
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
     filter(is.na(business_unit) & Package_Number != "EmptyString") %>%
