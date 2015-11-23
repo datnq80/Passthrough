@@ -50,7 +50,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   sellerCharges %<>% filter(!is.na(Charges_Ex_VAT) & Charges_Ex_VAT != 0)
   sellerCharges %<>% mutate(tracking_number = ifelse(tracking_number == "", "EmptyString",
                                                 tracking_number),
-                            package_number = ifelse(package_number == "", "EmptyString",
+                            package_number = ifelse(package_number == "", tracking_number,
                                                     package_number))
   OMS_Data_MP <- OMS_Data %>% filter(business_unit == "MP")
   OMS_Data_MP_Item <- OMS_Data_MP %>%

@@ -39,15 +39,15 @@ loadCostData <- function(costFilePath, LEXCostPath,
     
     LEXCostTrackings %>%
       select(Month, id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, order_nr,
-             business_unit, payment_method, Tracking_Number = tracking_number,
+             business_unit, payment_method, tracking_number = tracking_number,
              package_number, RTS_Date, Shipped_Date,
              Cancelled_Date, Delivered_Date, shipment_provider_name,
              Seller_Code, tax_class,Item_Cost)
   }
   
   costData <- data.frame(Delivery_Company = character(),
-                         Tracking_Number = character(),
-                         Package_Number = character(),
+                         tracking_number = character(),
+                         package_number = character(),
                          Pickup_Date = as.POSIXct(character()),
                          Cost_VAT = numeric(),
                          Cost_Ex_VAT = numeric(),
@@ -58,8 +58,8 @@ loadCostData <- function(costFilePath, LEXCostPath,
     if(file_ext(file) == "csv"){
       currentFile <- read.csv(file.path(costFilePath, file),
                               stringsAsFactors = FALSE,
-                              col.names = c("Delivery_Company", "Tracking_Number",
-                                            "Package_Number", "Pickup_Date", "Cost_VAT",
+                              col.names = c("Delivery_Company", "tracking_number",
+                                            "package_number", "Pickup_Date", "Cost_VAT",
                                             "Cost_Ex_VAT", "VAT", "Month"),
                               colClasses = c("character", "myTrackingNumber",
                                              "character", "myDate", "myNumeric",
@@ -72,18 +72,18 @@ loadCostData <- function(costFilePath, LEXCostPath,
   iProgress <- 1
   setTxtProgressBar(pb, iProgress)
   
-  costData %<>% mutate(Tracking_Number = ifelse(Tracking_Number == "", "EmptyString",
-                                                Tracking_Number),
-                       Package_Number = ifelse(Package_Number == "", "EmptyString",
-                                               Package_Number))
+  costData %<>% mutate(tracking_number = ifelse(tracking_number == "", "EmptyString",
+                                                tracking_number),
+                       package_number = ifelse(package_number == "", "EmptyString",
+                                               package_number))
   nonLexCost <- costData %>%
     arrange(Month) %>%
-    group_by(Month, Tracking_Number, Package_Number) %>%
+    group_by(Month, tracking_number, package_number) %>%
     summarize(Delivery_Company = last(Delivery_Company),
               Pickup_Date = last(Pickup_Date),
               Cost = sum(Cost_Ex_VAT, na.rm=TRUE)) %>%
-    select(Tracking_Number,
-           Package_Number,
+    select(tracking_number,
+           package_number,
            Cost,
            Month)
   
@@ -97,18 +97,18 @@ loadCostData <- function(costFilePath, LEXCostPath,
     arrange(tracking_number, id_sales_order_item) %>%
     filter(!duplicated(tracking_number, id_sales_order_item))
   Cost_OMS_Mapped <- left_join(nonLexCost, OMS_Data_Tracking,
-                               by = c("Tracking_Number" = "tracking_number"))
+                               by = c("tracking_number" = "tracking_number"))
   
   OMS_Data_Package <- OMS_Data %>%
     arrange(package_number, id_sales_order_item) %>%
     filter(!duplicated(package_number, id_sales_order_item))
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
-    filter(is.na(business_unit) & Package_Number != "EmptyString") %>%
-    select(Tracking_Number, Package_Number, shipment_provider_name, Cost, Month) %>%
-    left_join(OMS_Data, by=c("Package_Number" = "package_number"))
+    filter(is.na(business_unit) & package_number != "EmptyString") %>%
+    select(tracking_number, package_number, shipment_provider_name, Cost, Month) %>%
+    left_join(OMS_Data, by=c("package_number" = "package_number"))
   
   Cost_OMS_Mapped_Final <- Cost_OMS_Mapped %>%
-    filter(!(is.na(business_unit) & Tracking_Number != "EmptyString"))
+    filter(!(is.na(business_unit) & tracking_number != "EmptyString"))
   Cost_OMS_Mapped_Final <- rbind_list(Cost_OMS_Mapped_Final,
                                       select(Cost_OMS_MappedByPackage, -(tracking_number)),
                                       LEXCost)
@@ -123,14 +123,14 @@ loadCostData <- function(costFilePath, LEXCostPath,
   
   Item_Cost <- Cost_OMS_Mapped_Final %>%
     filter(Cost > 0) %>%
-    group_by(Month, Tracking_Number, Package_Number) %>%
+    group_by(Month, tracking_number, package_number) %>%
     mutate(pkgWeight = ifelse(any(is.na(weight) | weight == 0), 0,
                               sum(weight))) %>%
     mutate(Item_Cost = Cost / ifelse(pkgWeight == 0, n(), pkgWeight / weight)) %>%
     ungroup() %>%
     select(Month,id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, order_nr,
-           business_unit, payment_method, Tracking_Number,
-           Package_Number, RTS_Date, Shipped_Date,
+           business_unit, payment_method, tracking_number,
+           package_number, RTS_Date, Shipped_Date,
            Cancelled_Date, Delivered_Date, shipment_provider_name,
            Seller_Code, tax_class,
            Item_Cost)
