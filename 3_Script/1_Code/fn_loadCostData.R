@@ -136,9 +136,6 @@ loadCostData <- function(costFilePath, LEXCostPath,
     filter(!duplicated(id_sales_order_item)) %>%
     ungroup()
   
-
-  
-  
   iProgress <- 5
   setTxtProgressBar(pb, iProgress)
   cat("\r\n")
