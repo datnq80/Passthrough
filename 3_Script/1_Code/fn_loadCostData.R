@@ -86,6 +86,10 @@ loadCostData <- function(costFilePath, LEXCostPath,
            Month) %>%
     ungroup()
   
+  OMS_Data %<>%
+    mutate(uniqueTrackingKey = paste0(tracking_number, id_sales_order_item)) %>%
+    mutate(uniquePackageKey = paste0(package_number, id_sales_order_item))
+  
   nonLexCost %<>% filter(Cost > 0.0)
   LEXCost <- LoadLexCost(LEXCostPath, OMS_Data)
   
@@ -95,16 +99,14 @@ loadCostData <- function(costFilePath, LEXCostPath,
   LEXTracking <- LEXCost$tracking_number
   OMS_Data_Tracking <- OMS_Data %>%
     filter(tracking_number %in% LEXTracking) %>%
-    arrange(tracking_number, id_sales_order_item) %>%
-    filter(!duplicated(tracking_number, id_sales_order_item))
+    filter(!duplicated(uniqueTrackingKey))
   LEXCostMapped <- left_join(LEXCost, OMS_Data_Tracking,
                              by = "tracking_number")
   
-  costTracking <- costData$tracking_number
+  costTracking <- nonLexCost$tracking_number
   OMS_Data_Tracking <- OMS_Data %>%
     filter(tracking_number %in% costTracking) %>%
-    arrange(tracking_number, id_sales_order_item) %>%
-    filter(!duplicated(tracking_number, id_sales_order_item))
+    filter(!duplicated(uniqueTrackingKey))
   Cost_OMS_Mapped <- left_join(nonLexCost, OMS_Data_Tracking,
                                by = c("tracking_number" = "tracking_number"))
   
@@ -112,16 +114,20 @@ loadCostData <- function(costFilePath, LEXCostPath,
     mutate(package_number = ifelse(is.na(business_unit),
                                    package_number.x, package_number.y)) %>%
     select(-c(package_number.x, package_number.y))
+  
   Cost_OMS_MappedByPackage <- Cost_OMS_Mapped %>%
     filter(is.na(business_unit) & package_number != "EmptyString") %>%
     select(tracking_number, package_number, Cost, Month)
   costPackage <- Cost_OMS_MappedByPackage$package_number
+  
   OMS_Data_Package <- OMS_Data %>%
     filter(package_number %in% costPackage) %>%
     arrange(package_number, id_sales_order_item) %>%
-    filter(!duplicated(package_number, id_sales_order_item))
+    filter(!duplicated(uniquePackageKey))
+  
   Cost_OMS_MappedByPackage %<>%
     left_join(OMS_Data_Package, by = c("package_number" = "package_number"))
+  
   Cost_OMS_MappedByPackage %<>%
     mutate(tracking_number = ifelse(is.na(business_unit), 
                                     tracking_number.x, tracking_number.y)) %>%
