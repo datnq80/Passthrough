@@ -91,8 +91,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   
   SellerCharges_Package <- SellerCharges_Tracking_OMS %>%
     filter(is.na(bob_id_sales_order_item)) %>%
-    select(Seller_Name, tracking_number, package_number, Pickup_Date, Charges_VAT,
-           Charges_Ex_VAT, VAT)
+    select(tracking_number, package_number, Charges_Ex_VAT)
   packageFilter <- SellerCharges_Package$package_number
   OMS_Data_MP_Package <- OMS_Data_MP %>%
     filter(package_number %in% packageFilter) %>%
