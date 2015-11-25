@@ -33,7 +33,8 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   for (file in list.files(costFilePath)) {
     if(file_ext(file)=="csv"){
       currentFile <- read.csv(file.path(costFilePath, file),
-                              stringsAsFactors = FALSE,
+                              stringsAsFactors = FALSE, row.names = NULL,
+                              quote = '"',
                               col.names = c("Seller_Name","tracking_number","package_number",
                                             "Item_Number","Pickup_Date","Charges_VAT",
                                             "Charges_Ex_VAT","VAT"),
