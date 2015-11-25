@@ -52,6 +52,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
                                                 tracking_number),
                             package_number = ifelse(package_number == "", tracking_number,
                                                     package_number))
+  
   OMS_Data_MP <- OMS_Data %>% filter(business_unit == "MP")
   OMS_Data_MP_Item <- OMS_Data_MP %>%
     filter(!duplicated(bob_id_sales_order_item))
@@ -67,8 +68,14 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     mutate(uniqueTrackingKey = paste0(tracking_number, id_sales_order_item)) %>%
     mutate(uniquePackageKey = paste0(package_number, id_sales_order_item))
   
-  SellerCharges_Tracking <- filter(sellerCharges, is.na(Item_Number))
+  SellerCharges_Tracking <- sellerCharges %<>%
+    filter(sellerCharges, is.na(Item_Number)) %>%
+    group_by(tracking_number, package_number) %>%
+    summarize(Charges_Ex_VAT = sum(Charges_Ex_VAT)) %>%
+    ungroup()
+  
   trackingFilter <- SellerCharges_Tracking$tracking_number
+  
   OMS_Data_MP_Tracking <- OMS_Data_MP %>%
     filter(tracking_number %in% trackingFilter) %>%
     filter(!duplicated(uniqueTrackingKey))
