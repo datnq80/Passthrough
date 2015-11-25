@@ -68,10 +68,10 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     mutate(uniqueTrackingKey = paste0(tracking_number, id_sales_order_item)) %>%
     mutate(uniquePackageKey = paste0(package_number, id_sales_order_item))
   
-  SellerCharges_Tracking <- sellerCharges %<>%
-    filter(sellerCharges, is.na(Item_Number)) %>%
+  SellerCharges_Tracking <- sellerCharges %>%
+    filter(is.na(Item_Number)) %>%
     group_by(tracking_number, package_number) %>%
-    summarize(Charges_Ex_VAT = sum(Charges_Ex_VAT)) %>%
+    summarize(Charges_Ex_VAT = sum(Charges_Ex_VAT, na.rm = TRUE)) %>%
     ungroup()
   
   trackingFilter <- SellerCharges_Tracking$tracking_number
