@@ -55,7 +55,7 @@ loadCostData <- function(costFilePath, LEXCostPath,
   for (file in list.files(costFilePath)){
     if(file_ext(file) == "csv"){
       currentFile <- read.csv(file.path(costFilePath, file),
-                              stringsAsFactors = FALSE,
+                              stringsAsFactors = FALSE, row.names = NULL,
                               col.names = c("Delivery_Company", "tracking_number",
                                             "package_number", "Pickup_Date", "Cost_VAT",
                                             "Cost_Ex_VAT", "VAT", "Month"),
