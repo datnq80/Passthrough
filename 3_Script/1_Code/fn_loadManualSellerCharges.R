@@ -130,7 +130,8 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   itemCharged %<>%
     filter(!is.na(id_sales_order_item)) %>%
     group_by(id_sales_order_item) %>%
-    summarize(value=-abs(sum(item_Charges)))
+    summarize(value=-abs(sum(item_Charges, na.rm = TRUE))) %>%
+    ungroup()
   
   iProgress <- 5
   setTxtProgressBar(pb, iProgress)
