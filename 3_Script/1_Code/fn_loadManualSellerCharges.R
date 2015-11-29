@@ -5,7 +5,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   require(magrittr, quietly = TRUE)
   require(methods, quietly= TRUE)
   
-  pb <- txtProgressBar(min=0,max=5, style = 3)
+  pb <- txtProgressBar(min=0,max=6, style = 3)
   iProgress <- 0
   setTxtProgressBar(pb, iProgress)
   
@@ -62,6 +62,8 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   SellerCharges_Item_OMS <- left_join(SellerCharges_Item, OMS_Data_MP_Item,
                                       by = c("Item_Number"= "bob_id_sales_order_item"))
   
+  itemNotMapped <- (filter(SellerCharges_Item_OMS, is.na(id_sales_order_item)))$Item_Number
+  
   iProgress <- 2
   setTxtProgressBar(pb, iProgress)
   
@@ -70,7 +72,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     mutate(uniquePackageKey = paste0(package_number, id_sales_order_item))
   
   SellerCharges_Tracking <- sellerCharges %>%
-    filter(is.na(Item_Number)) %>%
+    filter(is.na(Item_Number) | Item_Number %in% itemNotMapped) %>%
     group_by(tracking_number, package_number) %>%
     summarize(Charges_Ex_VAT = sum(Charges_Ex_VAT, na.rm = TRUE)) %>%
     ungroup()
@@ -104,7 +106,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
                                     tracking_number.x, tracking_number.y)) %>%
     select(-c(tracking_number.x, tracking_number.y))
   
-  iProgress <- 3
+  iProgress <- 4
   setTxtProgressBar(pb, iProgress)
   
   itemChargedTracking <- SellerCharges_Tracking_OMS %>%
@@ -119,7 +121,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     ungroup() %>%
     select(id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, item_Charges)
   
-  iProgress <- 4
+  iProgress <- 5
   setTxtProgressBar(pb, iProgress)
   
   itemChargedItem <- SellerCharges_Item_OMS %>%
@@ -133,7 +135,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     summarize(value=-abs(sum(item_Charges, na.rm = TRUE))) %>%
     ungroup()
   
-  iProgress <- 5
+  iProgress <- 6
   setTxtProgressBar(pb, iProgress)
   
   cat("\r\n")
