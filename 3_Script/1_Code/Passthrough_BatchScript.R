@@ -68,6 +68,8 @@ tryCatch({
   loginfo("Start Loading Seller Charges Data", logger = "Passthrough.Console")
   SellerCharges <- LoadManualSellerCharges(sellerCharged, OMS_Data)
   
+  save.image(file = "temp.RData")
+  
   loginfo("Passthrough Calculation Start", logger = "Passthrough.Console")
   firstMonth <- Item_Cost %>%
     select(id_sales_order_item,Month) %>%
