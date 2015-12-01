@@ -58,18 +58,35 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   OMS_Data_MP_Item <- OMS_Data_MP %>%
     filter(!duplicated(bob_id_sales_order_item))
   
-  SellerCharges_Item <- filter(sellerCharges, !is.na(Item_Number))
+  SellerCharges_Item <- filter(sellerCharges, !is.na(Item_Number)) %>%
+    select(Item_Number, Charges_Ex_VAT)
   SellerCharges_Item_OMS <- left_join(SellerCharges_Item, OMS_Data_MP_Item,
                                       by = c("Item_Number"= "bob_id_sales_order_item"))
   
-  itemNotMapped <- (filter(SellerCharges_Item_OMS, is.na(id_sales_order_item)))$Item_Number
-  
-  iProgress <- 2
-  setTxtProgressBar(pb, iProgress)
+  itemTrackingCharged <- SellerCharges_Item_OMS %>%
+    group_by(tracking_number) %>%
+    summarize(packageCharges = sum(Charges_Ex_VAT, na.rm = TRUE))
   
   OMS_Data_MP %<>%
     mutate(uniqueTrackingKey = paste0(tracking_number, id_sales_order_item)) %>%
     mutate(uniquePackageKey = paste0(package_number, id_sales_order_item))
+  
+  OMS_Data_MP_Tracking <- OMS_Data_MP %>%
+    filter(tracking_number %in% trackingFilter) %>%
+    filter(!duplicated(uniqueTrackingKey))
+  
+  itemTrackingChargedItemLevel <- left_join(itemTrackingCharged, OMS_Data_MP_Tracking,
+                                            by = "tracking_number")
+  
+  itemChargedItem <- itemTrackingChargedItemLevel %>%
+    group_by("tracking_number") %>%
+    mutate(item_Charges = packageCharges / n()) %>%
+    select(id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, item_Charges)
+  
+  iProgress <- 2
+  setTxtProgressBar(pb, iProgress)
+  
+  itemNotMapped <- (filter(SellerCharges_Item_OMS, is.na(id_sales_order_item)))$Item_Number
   
   SellerCharges_Tracking <- sellerCharges %>%
     filter(is.na(Item_Number) | Item_Number %in% itemNotMapped) %>%
@@ -79,9 +96,6 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   
   trackingFilter <- SellerCharges_Tracking$tracking_number
   
-  OMS_Data_MP_Tracking <- OMS_Data_MP %>%
-    filter(tracking_number %in% trackingFilter) %>%
-    filter(!duplicated(uniqueTrackingKey))
   SellerCharges_Tracking_OMS <- left_join(SellerCharges_Tracking, OMS_Data_MP_Tracking,
                                           by = c("tracking_number" = "tracking_number"))
   SellerCharges_Tracking_OMS %<>%
@@ -124,8 +138,6 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   iProgress <- 5
   setTxtProgressBar(pb, iProgress)
   
-  itemChargedItem <- SellerCharges_Item_OMS %>%
-    select(id_sales_order_item, bob_id_sales_order_item=Item_Number, SC_SOI_ID, item_Charges=Charges_Ex_VAT)
   
   itemCharged <- rbind_list(itemChargedTracking, itemChargedPackage, itemChargedItem)
   

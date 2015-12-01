@@ -76,7 +76,7 @@ loadOMSData <- function(omsDataFolder){
   cat("\r\n")
   
   omsDataAll %<>%
-    mutate(tracking_number=gsub("^0","",tracking_number)) #remove leading ZERO of tracking number to mapped with Invoice Data
+    mutate(tracking_number=toupper(gsub("^0","",tracking_number))) #remove leading ZERO of tracking number to mapped with Invoice Data
   
   
   omsDataAll

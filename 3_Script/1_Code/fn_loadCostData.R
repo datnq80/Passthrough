@@ -18,7 +18,7 @@ loadCostData <- function(costFilePath, LEXCostPath,
   setClass("myNumeric")
   setAs("character","myNumeric", function(from) as.numeric(gsub('[",]','',from)))
   setClass("myTrackingNumber")
-  setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
+  setAs("character","myTrackingNumber", function(from) toupper(gsub('^0+','',from)))
   
   LoadLexCost <- function(LEXCostPath, OMS_Data) {
     LEXCost <- read.csv(LEXCostPath, 
