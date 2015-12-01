@@ -19,7 +19,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   setClass("myNumeric")
   setAs("character","myNumeric", function(from) as.numeric(gsub('[",]','',from)))
   setClass("myTrackingNumber")
-  setAs("character","myTrackingNumber", function(from) gsub('^0+','',from))
+  setAs("character","myTrackingNumber", function(from) toupper(gsub('^0+','',from)))
   
   sellerCharges <- data.frame(Seller_Name=character(),
                               tracking_number=character(),
