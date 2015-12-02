@@ -1,44 +1,80 @@
-loadSellerCharges <- function(sellerChargesFilePath){
+LoadSellerCharges <- function(sellerChargesPath) {
+  suppressMessages({
+    require(dplyr)
+    require(tools)
+    require(magrittr)
+    require(methods)
+    require(logging)
+  })
   
-  require(dplyr, quietly = TRUE)
-  require(tools, quietly = TRUE)
-  require(magrittr, quietly = TRUE)
-  require(methods, quietly= TRUE)
+  functionName <- "LoadSellerCharges"
+  loginfo(paste("Function", functionName, "started"), logger = reportName)
   
-  setClass('myDateTime')
-  setAs("character","myDateTime", function(from) as.POSIXct(from, format="%Y-%m-%d %H:%M:%S")) #covnert datetime string to datetime    
+  setClass('myDate')
+  setAs("character","myDate", function(from) as.POSIXct(substr(from,  1,10),
+                                                        format="%Y-%m-%d"))
+  setClass("myInteger")
+  setAs("character","myInteger", function(from) as.integer(gsub('"','',from)))
+  setClass("myNumeric")
+  setAs("character","myNumeric", function(from) as.numeric(gsub('[",]','',from)))
+  setClass("myTrackingNumber")
+  setAs("character","myTrackingNumber", function(from) gsub('^0+','',toupper(trimws(from))))
   
-  sellerCharges <- NULL
-  for (file in list.files(sellerChargesFilePath)){
-    if (file_ext(file)=="csv"){
-      currentFileData <- read.csv(file.path(sellerChargesFilePath,file),
-                                  stringsAsFactors = FALSE,
-                                  col.names = c("sc_id_sales_order_item","src_id","id_transaction",
-                                                "fk_seller","fk_transaction_type","is_unique",
-                                                "transaction_source","fk_user","description",
-                                                "value","taxes_vat","taxes_wht","ref",
-                                                "ref_date","number","fk_transaction_statement",
-                                                "created_at","updated_at","fk_qc_user"),
-                                  colClasses = c("integer","integer","integer",
-                                                 "integer","integer","character",
-                                                 "character","integer","character",
-                                                 "numeric","numeric","numeric","integer",
-                                                 "character","character","integer",
-                                                 "myDateTime","myDateTime","character"))
-      
-      if (is.null(sellerCharges))
-        sellerCharges <- currentFileData
-      else
-        sellerCharges <- rbind_list(sellerCharges,currentFileData)
+  sellerCharges_raw <- tryCatch({
+    
+    sellerCharges <- data.frame(Seller_Name=character(),
+                                tracking_number=character(),
+                                package_number=character(),
+                                Item_Number=numeric(),
+                                Pickup_Date=as.POSIXct(character()),
+                                Charges_VAT=numeric(),
+                                Charges_Ex_VAT=numeric(),
+                                VAT=numeric())
+    
+    for (file in list.files(sellerChargesPath)) {
+      if(file_ext(file)=="csv"){
+        currentFile <- tryCatch({
+          currentFile <- read.csv(file.path(sellerChargesPath, file),
+                                  stringsAsFactors = FALSE, row.names = NULL,
+                                  quote = '"',
+                                  col.names = c("Seller_Name","tracking_number","package_number",
+                                                "Item_Number","Pickup_Date","Charges_VAT",
+                                                "Charges_Ex_VAT","VAT"),
+                                  colClasses = c("character","myTrackingNumber","myTrackingNumber",
+                                                 "myNumeric","myDate","myNumeric",
+                                                 "myNumeric","myNumeric"))
+          
+          for (iWarn in warnings()){
+            logwarn(paste(functionName, file, iWarn), logger = reportName)
+          }
+          
+          currentFile
+        }, error = function(err) {
+          logerror(paste(functionName, "Loop Loading CSV Files", file, err, sep = " - "), logger = consoleLog)
+        }, finally = {
+          loginfo(paste(functionName, "Done Loading File", file), logger = reportName)
+        })
+        
+        sellerCharges <- rbind_list(sellerCharges,currentFile)
+        
+      }
     }
-  }
+    
+    for (iWarn in warnings()){
+      logwarn(paste(functionName, iWarn), logger = reportName)
+    }
+    
+    sellerCharges %<>% mutate(tracking_number = ifelse(tracking_number == "", "EmptyString",
+                                                       tracking_number),
+                              package_number = ifelse(package_number == "", tracking_number,
+                                                      package_number))
+    sellerCharges
+    
+  }, error = function(err) {
+    logerror(paste(functionName, err, sep = " - "), logger = consoleLog)
+  }, finally = {
+    loginfo(paste(functionName, "ended"), logger = reportName)
+  })
   
-  sellerCharges %<>% filter(!duplicated(sellerCharges))
-  
-  sellerCharges %<>%
-    group_by(src_id) %>%
-    summarize(value=sum(value-taxes_vat),
-              txn_date=last(created_at))
-  
-  sellerCharges
+  sellerCharges_raw
 }

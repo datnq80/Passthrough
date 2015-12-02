@@ -13,7 +13,6 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   setClass('myDate')
   setAs("character","myDate", function(from) as.POSIXct(substr(from,  1,10),
                                                         format="%Y-%m-%d"))
-  
   setClass("myInteger")
   setAs("character","myInteger", function(from) as.integer(gsub('"','',from)))
   setClass("myNumeric")
