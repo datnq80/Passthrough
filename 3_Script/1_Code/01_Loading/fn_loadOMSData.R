@@ -12,10 +12,10 @@ loadOMSData <- function(omsDataFolder){
   setClass("myNumeric")
   setAs("character","myNumeric", function(from) as.numeric(gsub('"','',from)))
   
-  omsDataAll <- data.frame(order_nr=integer(),
-                           id_sales_order_item=integer(),
-                           bob_id_sales_order_item=integer(),
-                           SC_SOI_ID=integer(),
+  omsDataAll <- data.frame(order_nr=numeric(),
+                           id_sales_order_item=numeric(),
+                           bob_id_sales_order_item=numeric(),
+                           SC_SOI_ID=numeric(),
                            business_unit=character(),
                            payment_method=character(),
                            sku=character(),
@@ -54,8 +54,8 @@ loadOMSData <- function(omsDataFolder){
                                               "Delivered_Date","tracking_number","package_number",
                                               "shipment_provider_name","Seller_Code",
                                               "tax_class","shipping_city","shipping_region"),
-                                  colClasses = c("myInteger","myInteger","myInteger",
-                                                 "myInteger",
+                                  colClasses = c("myNumeric","myNumeric","myNumeric",
+                                                 "myNumeric",
                                                  "character","character","character",
                                                  "myNumeric","myNumeric",
                                                  "myNumeric","myNumeric","character",
@@ -77,7 +77,10 @@ loadOMSData <- function(omsDataFolder){
   
   omsDataAll %<>%
     mutate(tracking_number=toupper(gsub("^0","",tracking_number))) #remove leading ZERO of tracking number to mapped with Invoice Data
-  
+  omsDataAll %<>%
+    mutate(uniqueKey = paste0(tracking_number,id_sales_order_item)) %>%
+    filter(!duplicated(uniqueKey)) %>%
+    select(-c(uniqueKey))
   
   omsDataAll
 }

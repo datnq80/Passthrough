@@ -24,7 +24,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   sellerCharges <- data.frame(Seller_Name=character(),
                               tracking_number=character(),
                               package_number=character(),
-                              Item_Number=integer(),
+                              Item_Number=numeric(),
                               Pickup_Date=as.POSIXct(character()),
                               Charges_VAT=numeric(),
                               Charges_Ex_VAT=numeric(),
@@ -39,7 +39,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
                                             "Item_Number","Pickup_Date","Charges_VAT",
                                             "Charges_Ex_VAT","VAT"),
                               colClasses = c("character","myTrackingNumber","myTrackingNumber",
-                                             "myInteger","myDate","myNumeric",
+                                             "myNumeric","myDate","myNumeric",
                                              "myNumeric","myNumeric"))
       sellerCharges <- rbind_list(sellerCharges,currentFile)
     }
@@ -50,7 +50,7 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
   
   sellerCharges %<>% filter(!is.na(Charges_Ex_VAT) & Charges_Ex_VAT != 0)
   sellerCharges %<>% mutate(tracking_number = ifelse(tracking_number == "", "EmptyString",
-                                                tracking_number),
+                                                     tracking_number),
                             package_number = ifelse(package_number == "", tracking_number,
                                                     package_number))
   
@@ -79,12 +79,15 @@ LoadManualSellerCharges <- function(costFilePath, OMS_Data) {
     filter(tracking_number %in% trackingFilter) %>%
     filter(!duplicated(uniqueTrackingKey))
   
+  itemTrackingChargedItemLevel <- itemTrackingCharged %>% 
+    left_join(OMS_Data_MP_Tracking, by = "tracking_number")
+  
   itemChargedItem <- itemTrackingChargedItemLevel %>%
     group_by(tracking_number) %>%
     mutate(item_Charges = packageCharges / n()) %>%
     ungroup() %>%
     select(id_sales_order_item, bob_id_sales_order_item, SC_SOI_ID, item_Charges)
-    
+  
   
   iProgress <- 2
   setTxtProgressBar(pb, iProgress)

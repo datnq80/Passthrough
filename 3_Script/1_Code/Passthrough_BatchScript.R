@@ -59,14 +59,29 @@ tryCatch({
   }
   
   loginfo("Start Loading OMS Data", logger = "Passthrough.Console")
-  OMS_Data <- loadOMSData(omsFolder)
+  if (!file.exists(file.path("3_Script/3_RData", venture, "OMS_Data.RData"))){
+    OMS_Data <- loadOMSData(omsFolder)
+    save(OMS_Data, file = file.path("3_Script/3_RData", venture, "OMS_Data.RData"))
+  } else {
+    load(file.path("3_Script/3_RData", venture, "OMS_Data.RData"))
+  }
   loginfo("Start Loading SKU Dimension Data", logger = "Passthrough.Console")
   SKUDimWeight <- LoadSKUDimWeight(skuDimensionPath, dimWeightFactor)
   loginfo("Start Loading Cost Data", logger = "Passthrough.Console")
-  Item_Cost <- loadCostData(manualData, LEXCostPath, 
-                            OMS_Data, SKUDimWeight)
+  if (!file.exists(file.path("3_Script/3_RData", venture, "Item_Cost.RData"))){
+    Item_Cost <- loadCostData(manualData, LEXCostPath, 
+                              OMS_Data, SKUDimWeight)
+    save(Item_Cost, file = file.path("3_Script/3_RData", venture, "Item_Cost.RData"))
+  } else {
+    load(file.path("3_Script/3_RData", venture, "Item_Cost.RData"))
+  }
   loginfo("Start Loading Seller Charges Data", logger = "Passthrough.Console")
-  SellerCharges <- LoadManualSellerCharges(sellerCharged, OMS_Data)
+  if (!file.exists(file.path("3_Script/3_RData", venture, "SellerCharges.RData"))){
+    SellerCharges <- LoadManualSellerCharges(sellerCharged, OMS_Data)
+    save(SellerCharges, file = file.path("3_Script/3_RData", venture, "SellerCharges.RData"))
+  } else {
+    load(file.path("3_Script/3_RData", venture, "SellerCharges.RData"))
+  }
   
   save.image(file = "temp.RData")
   
@@ -115,6 +130,16 @@ tryCatch({
            Seller_Code, tax_class,
            Item_Cost, Item_SellerCharged,
            Remark, bob_id_sales_order_item)
+  
+  Passthrough_Data %<>% 
+    group_by(tracking_number) %>%
+    mutate(Item_SellerCharged = sum(Item_SellerCharged, na.rm = TRUE) / n()) %>%
+    ungroup()
+    
+  Passthrough_Data %<>%
+    ungroup() %>%
+    mutate(Remark=ifelse(Item_SellerCharged == 0, "No_Charged", "Charged")) %>%
+    mutate(Remark=ifelse(is.na(business_unit) | business_unit == "Retail", NA, Is_Charged))
   
   monthReport <- unique(Passthrough_Data$Month)
   loginfo("Passthrough Calculation Done", logger = "Passthrough.Console")
