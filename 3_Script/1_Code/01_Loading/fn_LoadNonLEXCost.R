@@ -73,6 +73,7 @@ LoadNonLEXCostData <- function(costFilePath) {
   
   iProgress <- iProgress + 1
   setTxtProgressBar(pb, iProgress)
+  cat("\r\n")
   
   functionName <- "LoadNonLEXCostData"
   loginfo(paste("Function", functionName, "ended"), logger = reportName)

@@ -12,12 +12,18 @@ suppressMessages({
   
   LEXItemCost <- tryCatch({
     
-    LEXTracking <- OMS_Data %>%
+    OMS_Data_NoDup <- OMS_Data %>%
+      # creating unique key for removing duplicated records having same tracking number & item number
+      mutate(uniqueKey = paste0(tracking_number, id_sales_order_item)) %>%
+      filter(!duplicated(uniqueKey))
+    
+    LEXTracking <- OMS_Data_NoDup %>%
       filter(grepl("LEX", shipment_provider_name),
              tracking_number != "") %>%
       mutate(month=format(Shipped_Date, "%Y%m")) %>%
       select(tracking_number, month) %>%
-      arrange(tracking_number)
+      arrange(month, tracking_number) %>%
+      filter(!duplicated(tracking_number))
     
     LEXTrackingCost <- left_join(LEXTracking, LEXCost_raw, by = "month") %>%
       filter(!is.na(totalCost) & totalCost > 0) %>%
@@ -27,7 +33,7 @@ suppressMessages({
       select(-(totalCost))
     
     LEXItemCost <- LEXTrackingCost %>%
-      left_join(OMS_Data, by = "tracking_number") %>%
+      left_join(OMS_Data_NoDup, by = "tracking_number") %>%
       left_join(SKUDimWeight, by = "sku") %>%
       group_by(month, tracking_number) %>%
       # check dim weight data - only use dimweight cost distribution for full dimweight data

@@ -1,5 +1,19 @@
-MapSellerCharges <- function(sellerCharges_raw, OMS_Data, SKUDimWeight) {
-suppressMessages({
+MapSellerChargesOMS <- function(sellerCharges_raw, OMS_Data, SKUDimWeight) {
+  sellerChargesMapped <- MapSellerCharges(sellerCharges_raw, OMS_Data, SKUDimWeight,
+                                          "id_sales_order_item")
+  
+  sellerChargesMapped
+}
+
+MapSellerChargesBOB <- function(sellerCharges_raw, OMS_Data, SKUDimWeight) {
+  sellerChargesMapped <- MapSellerCharges(sellerCharges_raw, OMS_Data, SKUDimWeight,
+                                          "bob_id_sales_order_item")
+  sellerChargesMapped
+}
+
+MapSellerCharges <- function(sellerCharges_raw, OMS_Data, SKUDimWeight,
+                             itemIDColumn = "id_sales_order_item") {
+  suppressMessages({
     require(dplyr)
     require(tools)
     require(magrittr)
@@ -15,7 +29,8 @@ suppressMessages({
     OMS_Data_NoDup <- OMS_Data %>%
       # creating unique key for removing duplicated records having same tracking number & item number
       mutate(uniqueKey = paste0(tracking_number, id_sales_order_item)) %>%
-      filter(!duplicated(uniqueKey))
+      # only get MP as seller charges only applicable to MP items
+      filter(!duplicated(uniqueKey), business_unit == "MP")
     
     sellerChargesTracking <- filter(sellerCharges_raw, tracking_number != "EmptyString")
     sellerChargesTracking %<>% 
@@ -34,7 +49,7 @@ suppressMessages({
       # In case missing one item dimweight - cost is divided euqally to all item within packages
       mutate(dimWeightCheck = ifelse(any(is.na(weight) | weight == 0), "Failed", "Passed")) %>%
       mutate(itemCharges = ifelse(dimWeightCheck == "Passed", packageCharges * weight / sum(weight),
-                               packageCharges / n())) %>%
+                                  packageCharges / n())) %>%
       ungroup() 
     itemChargesbyTracking %<>%
       select(tracking_number, package_number, id_sales_order_item, itemCharges)
@@ -49,7 +64,7 @@ suppressMessages({
       summarize(packageCharges = sum(Charges_Ex_VAT, na.rm = TRUE)) %>%
       ungroup()
     sellerChargesPackageMapped <- left_join(sellerChargesPackage, OMS_Data_NoDup,
-                                             by = "package_number")
+                                            by = "package_number")
     
     mappedCharges <- sellerChargesPackageMapped %>%
       filter(!is.na(business_unit))
@@ -81,11 +96,11 @@ suppressMessages({
       summarize(packageCharges = sum(Charges_Ex_VAT, na.rm = TRUE)) %>%
       ungroup()
     sellerChargesItemMapped <- left_join(sellerChargesItem, OMS_Data_NoDup,
-                                            by = c("Item_Number" = "id_sales_order_item"))
+                                         by = c("Item_Number" = itemIDColumn))
     noMapped <- filter(sellerChargesItemMapped, is.na(tracking_number))
     sellerChargesItemMapped %<>% select(tracking_number, packageCharges)
     sellerChargesItemMapped <- left_join(sellerChargesItemMapped, OMS_Data_NoDup,
-                                             by = "tracking_number")
+                                         by = "tracking_number")
     
     mappedCharges <- sellerChargesItemMapped %>%
       filter(!is.na(business_unit))

@@ -11,18 +11,9 @@ dateLog <- format(Sys.time(), "%Y%m%d%H%M")
 
 tryCatch({
   
-  args <- commandArgs(trailingOnly = TRUE)
-  venture <- args[1]
-  dimWeightFactor <- as.numeric(args[2])
-  
-  ventureShort <- switch (venture,
-                          "Indonesia" = "ID",
-                          "Malaysia" = "MY",
-                          "Philippines" = "PH",
-                          "Singapore" = "SG",
-                          "Thailand" = "TH",
-                          "Vietnam" = "VN"
-  )
+  venture <- "Vietnam"
+  ventureShort <- "VN"
+  dimWeightFactor <- 6000
   
   reportName <- paste0("Passthrough_", venture)
   consoleLog <- paste0("Passthrough_", venture,".Console")
@@ -70,30 +61,35 @@ tryCatch({
   }
   save.image(file = file.path("3_Script/3_RData", venture, "environment.RData"))
   
-  loginfo("Start Loading OMS Data", logger = "Passthrough.Console")
+  loginfo("Start Loading OMS Data", logger = consoleLog)
   if (!file.exists(file.path("3_Script/3_RData", venture, "OMS_Data.RData"))){
     OMS_Data <- loadOMSData(omsFolder)
     save(OMS_Data, file = file.path("3_Script/3_RData", venture, "OMS_Data.RData"))
   } else {
     load(file.path("3_Script/3_RData", venture, "OMS_Data.RData"))
   }
-  loginfo("Start Loading SKU Dimension Data", logger = "Passthrough.Console")
+  
+  loginfo("Start Loading SKU Dimension Data", logger = consoleLog)
   SKUDimWeight <- LoadSKUDimWeight(skuDimensionPath, dimWeightFactor)
-  loginfo("Start Loading Cost Data", logger = "Passthrough.Console")
+  
+  loginfo("Start Loading Cost Data", logger = consoleLog)
   nonLEXCostData_raw <- LoadNonLEXCostData(costFilePath = manualData)
   nonLEXItemCost <- GetItemCostOMSData(nonLEXCostData_raw, OMS_Data, SKUDimWeight)
   LEXCost_raw <- LoadLEXCost(costFilePath = LEXCostPath)
   LEXItemCost <- GetLEXItemCost(LEXCost_raw, OMS_Data, SKUDimWeight)
   allItemCost <- rbind_list(nonLEXItemCost, LEXItemCost)
   save(allItemCost, file = file.path("3_Script/3_RData", venture, "allItemCost.RData"))
-  loginfo("Start Loading Seller Charges Data", logger = "Passthrough.Console")
+  
+  loginfo("Start Loading Seller Charges Data", logger = consoleLog)
   sellerCharges_raw <- LoadSellerCharges(sellerChargesPath)
-  sellerChargesMapped <- MapSellerCharges(sellerCharges_raw, OMS_Data, SKUDimWeight)
+  sellerChargesMapped <- MapSellerChargesBOB(sellerCharges_raw, OMS_Data, 
+                                             SKUDimWeight)
   save(sellerChargesMapped, file = file.path("3_Script/3_RData", venture, "sellerChargesMapped.RData"))
   mappedCostCharges <- MapCostCharges(allItemCost, sellerChargesMapped)
   save(mappedCostCharges, file = file.path("3_Script/3_RData", venture, "mappedCostCharges.RData"))
   passthroughData <- CalculatePassthrough(mappedCostCharges)
   save(passthroughData, file = file.path("3_Script/3_RData", venture, "passthroughData.RData"))
+  
   loginfo("Write Passthrough Data to CSV File", logger = consoleLog)
   WritePassthrougCSV(passthroughData)
   
